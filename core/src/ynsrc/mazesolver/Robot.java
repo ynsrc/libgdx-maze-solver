@@ -10,11 +10,17 @@ import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 
 public class Robot extends Actor {
+
     private World world;
     Body body;
+    private float bodyRadius = 0.4f;
 
     private Vector2 robotCenter, forwardRay, leftRay, rightRay;
     private float rayLength = 2f;
+
+    private boolean sensorFront, sensorLeft, sensorRight;
+    private MotorDirection leftMotor = MotorDirection.NONE, rightMotor = MotorDirection.NONE;
+    private float delay = 0;
 
     public Robot(World world, Vector2 startPos) {
         this.world = world;
@@ -26,7 +32,7 @@ public class Robot extends Actor {
         body = world.createBody(bodyDef);
 
         CircleShape circle = new CircleShape();
-        circle.setRadius(0.4f);
+        circle.setRadius(bodyRadius);
 
         FixtureDef fixtureDef = new FixtureDef();
         fixtureDef.shape = circle;
@@ -39,14 +45,50 @@ public class Robot extends Actor {
         circle.dispose();
     }
 
+    private void moveForward() {
+        leftMotor = MotorDirection.FORWARD;
+        rightMotor = MotorDirection.FORWARD;
+    }
+
+    private void turnLeft() {
+        leftMotor = MotorDirection.REVERSE;
+        rightMotor = MotorDirection.FORWARD;
+    }
+
+    private void turnRight() {
+        leftMotor = MotorDirection.FORWARD;
+        rightMotor = MotorDirection.REVERSE;
+    }
+
+    private void stop() {
+        leftMotor = MotorDirection.NONE;
+        rightMotor = MotorDirection.NONE;
+    }
+
+    private void simulateMotors() {
+        if (leftMotor == MotorDirection.FORWARD && rightMotor == MotorDirection.FORWARD) {
+            float angle = body.getAngle();
+            Vector2 forward = new Vector2(MathUtils.cos(angle), MathUtils.sin(angle)).scl(0.01f);
+            body.applyLinearImpulse(forward, robotCenter, true);
+        }
+
+        if (leftMotor == MotorDirection.REVERSE && rightMotor == MotorDirection.FORWARD) {
+            body.applyTorque(0.05f, true);
+        }
+
+        if (leftMotor == MotorDirection.FORWARD && rightMotor == MotorDirection.REVERSE) {
+            body.applyTorque(-0.05f, true);
+        }
+    }
+
     @Override
     public void act(float delta) {
         float forwardAngle = body.getAngle();
-        float leftAngle = forwardAngle - MathUtils.PI / 2;
-        float rightAngle = forwardAngle + MathUtils.PI / 2;
+        float leftAngle = forwardAngle + MathUtils.PI / 2;
+        float rightAngle = forwardAngle - MathUtils.PI / 2;
 
         body.setLinearVelocity(body.getLinearVelocity().scl(0.98f));
-        body.setAngularVelocity(body.getAngularVelocity() * 0.97f);
+        body.setAngularVelocity(body.getAngularVelocity() * 0.98f);
 
         robotCenter = body.getWorldCenter();
 
@@ -54,54 +96,65 @@ public class Robot extends Actor {
         leftRay = robotCenter.cpy().add(MathUtils.cos(leftAngle) * rayLength, MathUtils.sin(leftAngle) * rayLength);
         rightRay = robotCenter.cpy().add(MathUtils.cos(rightAngle) * rayLength, MathUtils.sin(rightAngle) * rayLength);
 
-        world.rayCast((fixture, point, normal, fraction) -> {
+        sensorFront = false;
+        sensorLeft = false;
+        sensorRight = false;
 
+        world.rayCast((fixture, point, normal, fraction) -> {
+            sensorFront = true;
             return 1;
         }, robotCenter, forwardRay);
 
         world.rayCast((fixture, point, normal, fraction) -> {
-
+            sensorLeft = true;
             return 1;
         }, robotCenter, leftRay);
 
         world.rayCast((fixture, point, normal, fraction) -> {
-
+            sensorRight = true;
             return 1;
         }, robotCenter, rightRay);
 
-        if (Gdx.input.isKeyPressed(Input.Keys.W)) {
-            Vector2 forward = new Vector2(MathUtils.cos(forwardAngle), MathUtils.sin(forwardAngle)).scl(0.01f);
-            body.applyLinearImpulse(forward, robotCenter, true);
+        simulateMotors();
+
+        if (delay > 0) {
+            delay -= delta;
+            return;
         }
 
-        if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            body.applyTorque(0.05f, true);
+        if (sensorFront) {
+            if (!sensorRight) {
+                turnRight();
+                delay = 2.0f;
+            } else {
+                turnLeft();
+            }
+        } else {
+            moveForward();
         }
 
-        if (Gdx.input.isKeyPressed(Input.Keys.D)) {
-            body.applyTorque(-0.05f, true);
-        }
+        if (Gdx.input.isKeyPressed(Input.Keys.W)) moveForward();
+        if (Gdx.input.isKeyPressed(Input.Keys.A)) turnLeft();
+        if (Gdx.input.isKeyPressed(Input.Keys.D)) turnRight();
     }
 
     @Override
     public void drawDebug(ShapeRenderer shapes) {
-        shapes.setProjectionMatrix(getStage().getCamera().combined);
-
         shapes.end();
 
         shapes.begin(ShapeRenderer.ShapeType.Line);
+        shapes.setColor(sensorFront ? Color.RED : Color.GREEN);
         shapes.line(robotCenter, forwardRay);
-        shapes.setColor(Color.RED);
         shapes.end();
 
         shapes.begin(ShapeRenderer.ShapeType.Line);
+        shapes.setColor(sensorLeft ? Color.RED : Color.GREEN);
         shapes.line(robotCenter, leftRay);
-        shapes.setColor(Color.YELLOW);
         shapes.end();
 
         shapes.begin(ShapeRenderer.ShapeType.Line);
+        shapes.setColor(sensorRight ? Color.RED : Color.GREEN);
         shapes.line(robotCenter, rightRay);
-        shapes.setColor(Color.BLUE);
         shapes.end();
     }
 }
