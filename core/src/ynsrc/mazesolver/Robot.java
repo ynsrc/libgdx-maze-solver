@@ -88,11 +88,7 @@ public class Robot extends Actor {
 
         if (sensorFront) {
             if (sensorRight) {
-                if (sensorLeft){
-                    moveForward();
-                } else {
-                    turnLeft();
-                }
+                turnLeft();
             } else {
                 turnRight();
             }
