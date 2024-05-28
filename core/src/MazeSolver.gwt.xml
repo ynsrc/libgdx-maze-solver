@@ -2,4 +2,5 @@
 <!DOCTYPE module PUBLIC "-//Google Inc.//DTD Google Web Toolkit trunk//EN" "https://www.gwtproject.org/doctype/2.10.0/gwt-module.dtd">
 <module>
 	<source path="ynsrc/mazesolver" />
+	<source path="js42721/maze" />
 </module>

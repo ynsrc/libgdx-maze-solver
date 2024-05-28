@@ -11,12 +11,11 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 
 public class Robot extends Actor {
 
-    private World world;
     Body body;
-    private float bodyRadius = 0.4f;
+    private final World world;
+    private final float bodyRadius = 0.4f;
 
     private Vector2 robotCenter, forwardRay, leftRay, rightRay;
-    private float rayLength = 2f;
 
     private boolean sensorFront, sensorLeft, sensorRight;
     private MotorDirection leftMotor = MotorDirection.NONE, rightMotor = MotorDirection.NONE;
@@ -81,20 +80,44 @@ public class Robot extends Actor {
         }
     }
 
+    private void solveMaze(float delta) {
+        if (delay > 0) {
+            delay -= delta;
+            return;
+        }
+
+        if (sensorFront) {
+            if (sensorRight) {
+                turnLeft();
+            } else {
+                turnRight();
+            }
+        } else {
+            if (!sensorRight) {
+                turnRight();
+            } else  {
+                moveForward();
+            }
+        }
+    }
+
     @Override
     public void act(float delta) {
         float forwardAngle = body.getAngle();
-        float leftAngle = forwardAngle + MathUtils.PI / 2;
-        float rightAngle = forwardAngle - MathUtils.PI / 2;
+        float leftAngle = forwardAngle + MathUtils.PI / 3;
+        float rightAngle = forwardAngle - MathUtils.PI / 3;
 
         body.setLinearVelocity(body.getLinearVelocity().scl(0.98f));
         body.setAngularVelocity(body.getAngularVelocity() * 0.98f);
 
         robotCenter = body.getWorldCenter();
 
-        forwardRay = robotCenter.cpy().add(MathUtils.cos(forwardAngle) * rayLength, MathUtils.sin(forwardAngle) * rayLength);
-        leftRay = robotCenter.cpy().add(MathUtils.cos(leftAngle) * rayLength, MathUtils.sin(leftAngle) * rayLength);
-        rightRay = robotCenter.cpy().add(MathUtils.cos(rightAngle) * rayLength, MathUtils.sin(rightAngle) * rayLength);
+        float sideRayLength = 2f;
+        float frontRayLength = 2f;
+
+        forwardRay = robotCenter.cpy().add(MathUtils.cos(forwardAngle) * frontRayLength, MathUtils.sin(forwardAngle) * frontRayLength);
+        leftRay = robotCenter.cpy().add(MathUtils.cos(leftAngle) * sideRayLength, MathUtils.sin(leftAngle) * sideRayLength);
+        rightRay = robotCenter.cpy().add(MathUtils.cos(rightAngle) * sideRayLength, MathUtils.sin(rightAngle) * sideRayLength);
 
         sensorFront = false;
         sensorLeft = false;
@@ -117,21 +140,7 @@ public class Robot extends Actor {
 
         simulateMotors();
 
-        if (delay > 0) {
-            delay -= delta;
-            return;
-        }
-
-        if (sensorFront) {
-            if (!sensorRight) {
-                turnRight();
-                delay = 2.0f;
-            } else {
-                turnLeft();
-            }
-        } else {
-            moveForward();
-        }
+        solveMaze(delta);
 
         if (Gdx.input.isKeyPressed(Input.Keys.W)) moveForward();
         if (Gdx.input.isKeyPressed(Input.Keys.A)) turnLeft();

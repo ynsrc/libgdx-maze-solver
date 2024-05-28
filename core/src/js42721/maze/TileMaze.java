@@ -107,7 +107,7 @@ public class TileMaze implements Serializable {
 
     @Override
     public String toString() {
-        String lineSeparator = System.getProperty("line.separator");
+        String lineSeparator = "\n";
         StringBuilder builder = new StringBuilder();
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
