@@ -112,7 +112,7 @@ public class Robot extends Actor {
 
         robotCenter = body.getWorldCenter();
 
-        float sideRayLength = 2f;
+        float sideRayLength = 2.1f;
         float frontRayLength = 2f;
 
         forwardRay = robotCenter.cpy().add(MathUtils.cos(forwardAngle) * frontRayLength, MathUtils.sin(forwardAngle) * frontRayLength);
