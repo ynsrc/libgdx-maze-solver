@@ -2,6 +2,8 @@
 
 This project is a maze solver robot simulation, which has three sensors around it.
 
+![Screenshot](screenshot.png)
+
 # Attributions
 * https://github.com/libgdx/libgdx
 * https://github.com/erincatto/box2d
