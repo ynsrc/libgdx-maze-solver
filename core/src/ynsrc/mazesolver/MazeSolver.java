@@ -1,33 +1,34 @@
 package ynsrc.mazesolver;
 
-import com.badlogic.gdx.ApplicationAdapter;
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
-import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FillViewport;
-import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import js42721.maze.RecursiveBacktracker;
 import js42721.maze.TileMaze;
 
-public class MazeSolver extends ApplicationAdapter {
-    World world;
-    Viewport viewport;
-    Camera camera;
-    Stage stage;
-    Box2DDebugRenderer debugRenderer;
-    ShapeRenderer shapeRenderer;
-    Robot robot;
+public class MazeSolver extends Game {
+    public static final float PPM = 300f;
+    public static final float WORLD_WIDTH = 2.25f;
+    public static final float WORLD_HEIGHT = WORLD_WIDTH * (3/4f);
+    public static final float SCREEN_WIDTH = WORLD_WIDTH * PPM;
+    public static final float SCREEN_HEIGHT = WORLD_HEIGHT * PPM;
 
+    World world;
+    Viewport viewport, uiViewport;
+    OrthographicCamera camera, uiCamera;
+    Box2DDebugRenderer debugRenderer;
+    Robot robot;
     TileMaze tileMaze;
+    ShapeRenderer shapeRenderer;
+    SpriteBatch spriteBatch;
 
     @Override
     public void create() {
@@ -35,18 +36,20 @@ public class MazeSolver extends ApplicationAdapter {
         debugRenderer = new Box2DDebugRenderer();
         shapeRenderer = new ShapeRenderer();
 
-        camera = new OrthographicCamera(30, 30);
-        viewport = new FillViewport(30f / 2f, 30f / 2f, camera);
-        stage = new Stage(viewport);
+        camera = new OrthographicCamera(SCREEN_WIDTH, SCREEN_HEIGHT);
+        viewport = new FillViewport(WORLD_WIDTH, WORLD_HEIGHT, camera);
 
-        RecursiveBacktracker recursiveBacktracker = new RecursiveBacktracker(30, 30);
+        uiCamera = new OrthographicCamera(SCREEN_WIDTH, SCREEN_HEIGHT);
+        uiViewport = new FillViewport(SCREEN_WIDTH, SCREEN_HEIGHT, uiCamera);
 
-        tileMaze = new TileMaze(recursiveBacktracker);
+        spriteBatch = new SpriteBatch();
+
+        tileMaze = new TileMaze(new RecursiveBacktracker(32, 32));
         tileMaze.generate();
 
-        int N = 2;
+        float N = 0.25f;
 
-        Vector2 startPos = Vector2.Zero;
+        Vector2 startPos = new Vector2();
 
         for (int y = 0; y < tileMaze.getHeight(); ++y) {
             for (int x = 0; x < tileMaze.getWidth(); ++x) {
@@ -59,20 +62,13 @@ public class MazeSolver extends ApplicationAdapter {
                     PolygonShape shape = new PolygonShape();
                     shape.setAsBox(N / 2f, N / 2f);
                     body.createFixture(shape, 1.0f);
-                } else {
-                    if (startPos == Vector2.Zero) {
-                        startPos = new Vector2(x + 1, y + 1);
-                    }
+                } else if (startPos.isZero()) {
+                    startPos = new Vector2(x + N, y + N);
                 }
             }
         }
 
-
-
-        robot = new Robot(world, startPos);
-        robot.debug();
-
-        stage.addActor(robot);
+        robot = new Robot(this, startPos);
     }
 
     @Override
@@ -81,14 +77,21 @@ public class MazeSolver extends ApplicationAdapter {
 
         world.step(1 / 60f, 6, 2);
 
-        stage.act(Gdx.graphics.getDeltaTime());
+        robot.act(Gdx.graphics.getDeltaTime());
 
         camera.position.set(robot.body.getPosition(), 0);
         camera.update();
 
-        stage.draw();
-
         debugRenderer.render(world, camera.combined);
+
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        robot.drawDebug(shapeRenderer);
+
+
+        spriteBatch.setProjectionMatrix(uiCamera.projection);
+        spriteBatch.begin();
+        robot.draw(spriteBatch, 1.0f);
+        spriteBatch.end();
     }
 
     @Override
@@ -99,5 +102,9 @@ public class MazeSolver extends ApplicationAdapter {
     @Override
     public void dispose() {
         world.dispose();
+        debugRenderer.dispose();
+        shapeRenderer.dispose();
+        spriteBatch.dispose();
+        robot.dispose();
     }
 }
