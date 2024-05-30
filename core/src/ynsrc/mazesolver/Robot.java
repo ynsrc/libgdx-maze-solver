@@ -8,9 +8,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.physics.box2d.*;
-import com.badlogic.gdx.physics.box2d.joints.FrictionJointDef;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.utils.Disposable;
 
@@ -187,6 +185,12 @@ public class Robot extends Actor implements Disposable {
         if (Gdx.input.isKeyPressed(Input.Keys.D)) turnRight();
     }
 
+    private String floatFormat(float number) {
+        String val = String.valueOf(number).replace(",", ".");
+        String[] raw = val.split("\\.");
+        return raw[0] + "." + raw[1].substring(0, 2);
+    }
+
     @Override
     public void draw(Batch batch, float parentAlpha) {
         float ratio = MazeSolver.SCREEN_WIDTH / Gdx.graphics.getWidth();
@@ -195,7 +199,7 @@ public class Robot extends Actor implements Disposable {
             Vector2 screenCoordinates = mazeSolver.viewport.project(rayFront.end.cpy().scl(1.01f));
             font.draw(
                     batch,
-                    String.format("%.2f cm", distanceFront * 100f),
+                    floatFormat(distanceFront * 100f) + " cm",
                     (screenCoordinates.x - Gdx.graphics.getWidth() / 2f) * ratio,
                     (screenCoordinates.y - Gdx.graphics.getHeight() / 2f) * ratio
             );
@@ -205,7 +209,7 @@ public class Robot extends Actor implements Disposable {
             Vector2 screenCoordinates = mazeSolver.viewport.project(rayLeft.end.cpy().scl(1.01f));
             font.draw(
                     batch,
-                    String.format("%.2f cm", distanceLeft * 100f),
+                    floatFormat(distanceLeft * 100f) + " cm",
                     (screenCoordinates.x - Gdx.graphics.getWidth() / 2f) * ratio,
                     (screenCoordinates.y - Gdx.graphics.getHeight() / 2f) * ratio
             );
@@ -215,7 +219,7 @@ public class Robot extends Actor implements Disposable {
             Vector2 screenCoordinates = mazeSolver.viewport.project(rayRight.end.cpy().scl(1.01f));
             font.draw(
                     batch,
-                    String.format("%.2f cm", distanceRight * 100f),
+                    floatFormat(distanceRight * 100f) + " cm",
                     (screenCoordinates.x - Gdx.graphics.getWidth() / 2f) * ratio,
                     (screenCoordinates.y - Gdx.graphics.getHeight() / 2f) * ratio
             );
