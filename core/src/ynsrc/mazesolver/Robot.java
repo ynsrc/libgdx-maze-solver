@@ -12,27 +12,63 @@ import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.utils.Disposable;
 
+/**
+ * This class controls and draws the maze solver robot.
+ */
 public class Robot extends Actor implements Disposable {
+    /** Left and Right ray lengths in meters. */
     private static final float SIDE_RAY_LENGTH = 0.2f;
+
+    /** Front ray length in meters. */
     private static final float FRONT_RAY_LENGTH = 0.2f;
 
-    private final MazeSolver mazeSolver;
-    private final World world;
+    /** Radius of robot body in meters. */
     private final float bodyRadius = 0.05f;
 
+    /** Caller game class of maze solver simulation for accessing to viewport and other members. */
+    private final MazeSolver mazeSolver;
+
+    /** Box2D world object of maze solver simulation. */
+    private final World world;
+
+    /** Robot body in Box2D world. */
     Body body;
 
+    /** Center point of the robot in the world. */
     private Vector2 robotCenter;
-    Ray2D rayFront = new Ray2D(), rayLeft = new Ray2D(), rayRight = new Ray2D();
+
+    /** Ray for front sensor. */
+    private final Ray2D rayFront = new Ray2D();
+
+    /** Ray for left sensor. */
+    private final Ray2D rayLeft = new Ray2D();
+
+    /** Ray for right sensor. */
+    private final Ray2D rayRight = new Ray2D();
+
+    /** Collisions points for sensor rays. */
     private Vector2 collisionFront, collisionLeft, collisionRight;
+
+    /** Distances from sensors in meters. */
     private float distanceFront, distanceLeft, distanceRight;
+
+    /** Sensor detection statuses, true means object detected in range. */
     private boolean sensorFront, sensorLeft, sensorRight;
-    private final Motor leftMotor = new Motor();
-    private final Motor rightMotor = new Motor();
+
+    /** Motor object for DC motor simulation. */
+    private final Motor leftMotor = new Motor(), rightMotor = new Motor();
+
+    /** Delay time in seconds for maze solving algorithms. */
     private float delay = 0;
 
+    /** Font for drawing texts on screen. */
     private final BitmapFont font;
 
+    /**
+     * Main constructor of maze solver robot actor.
+     * @param mazeSolver caller game (simulation) object.
+     * @param startPos initial position of the robot in world.
+     */
     public Robot(MazeSolver mazeSolver, Vector2 startPos) {
         this.mazeSolver = mazeSolver;
         world = mazeSolver.world;
@@ -58,26 +94,31 @@ public class Robot extends Actor implements Disposable {
         circle.dispose();
     }
 
+    /** Sets the motors to move forward.  */
     private void moveForward() {
         leftMotor.direction = MotorDirection.FORWARD;
         rightMotor.direction = MotorDirection.FORWARD;
     }
 
+    /** Sets the motors to turn left.  */
     private void turnLeft() {
         leftMotor.direction = MotorDirection.REVERSE;
         rightMotor.direction = MotorDirection.FORWARD;
     }
 
+    /** Sets the motors to turn right. */
     private void turnRight() {
         leftMotor.direction = MotorDirection.FORWARD;
         rightMotor.direction = MotorDirection.REVERSE;
     }
 
+    /** Sets the motors to idle. */
     private void stop() {
         leftMotor.direction = MotorDirection.NONE;
         rightMotor.direction = MotorDirection.NONE;
     }
 
+    /** Simulate DC motors to move or rotate the robot. */
     private void simulateMotors() {
         if (leftMotor.direction == MotorDirection.FORWARD && rightMotor.direction == MotorDirection.FORWARD) {
             float angle = body.getAngle();
@@ -94,6 +135,7 @@ public class Robot extends Actor implements Disposable {
         }
     }
 
+    /** Maze solving algorithm for the robot. */
     private void solveMaze(float delta) {
         if (delay > 0) {
             delay -= delta;
@@ -185,23 +227,25 @@ public class Robot extends Actor implements Disposable {
         if (Gdx.input.isKeyPressed(Input.Keys.D)) turnRight();
     }
 
+    /** Used to support GWT/HTML5 build which does not support String.format(...) method. */
     private String floatFormat(float number) {
         String val = String.valueOf(number).replace(",", ".");
         String[] raw = val.split("\\.");
-        return raw[0] + "." + raw[1].substring(0, 2);
+        return raw[0] + "." + raw[1].substring(0, Math.min(raw[1].length(), 2));
     }
 
     @Override
     public void draw(Batch batch, float parentAlpha) {
-        float ratio = MazeSolver.SCREEN_WIDTH / Gdx.graphics.getWidth();
+        float xRatio = Gdx.graphics.getWidth() / MazeSolver.SCREEN_WIDTH;
+        float yRatio =  Gdx.graphics.getHeight() / MazeSolver.SCREEN_HEIGHT;
 
         if (sensorFront) {
             Vector2 screenCoordinates = mazeSolver.viewport.project(rayFront.end.cpy().scl(1.01f));
             font.draw(
                     batch,
                     floatFormat(distanceFront * 100f) + " cm",
-                    (screenCoordinates.x - Gdx.graphics.getWidth() / 2f) * ratio,
-                    (screenCoordinates.y - Gdx.graphics.getHeight() / 2f) * ratio
+                    screenCoordinates.x / xRatio,
+                    screenCoordinates.y / yRatio
             );
         }
 
@@ -210,8 +254,8 @@ public class Robot extends Actor implements Disposable {
             font.draw(
                     batch,
                     floatFormat(distanceLeft * 100f) + " cm",
-                    (screenCoordinates.x - Gdx.graphics.getWidth() / 2f) * ratio,
-                    (screenCoordinates.y - Gdx.graphics.getHeight() / 2f) * ratio
+                    screenCoordinates.x / xRatio,
+                    screenCoordinates.y / yRatio
             );
         }
 
@@ -220,8 +264,8 @@ public class Robot extends Actor implements Disposable {
             font.draw(
                     batch,
                     floatFormat(distanceRight * 100f) + " cm",
-                    (screenCoordinates.x - Gdx.graphics.getWidth() / 2f) * ratio,
-                    (screenCoordinates.y - Gdx.graphics.getHeight() / 2f) * ratio
+                    screenCoordinates.x / xRatio,
+                    screenCoordinates.y / yRatio
             );
         }
     }
