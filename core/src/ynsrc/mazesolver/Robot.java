@@ -23,7 +23,10 @@ public class Robot extends Actor implements Disposable {
     private static final float FRONT_RAY_LENGTH = 0.2f;
 
     /** Radius of robot body in meters. */
-    private final float bodyRadius = 0.05f;
+    private final float BODY_RADIUS = 0.05f;
+
+    /** Force to apply DC motors in Newton [N] to move or rotate robot. */
+    private final Vector2 MOTOR_FORCE = new Vector2(10e-3f, 10e-3f);
 
     /** Caller game class of maze solver simulation for accessing to viewport and other members. */
     private final MazeSolver mazeSolver;
@@ -58,9 +61,6 @@ public class Robot extends Actor implements Disposable {
     /** Motor object for DC motor simulation. */
     private final Motor leftMotor = new Motor(), rightMotor = new Motor();
 
-    /** Delay time in seconds for maze solving algorithms. */
-    private float delay = 0;
-
     /** Font for drawing texts on screen. */
     private final BitmapFont font;
 
@@ -81,7 +81,7 @@ public class Robot extends Actor implements Disposable {
         body = world.createBody(bodyDef);
 
         CircleShape circle = new CircleShape();
-        circle.setRadius(bodyRadius);
+        circle.setRadius(BODY_RADIUS);
 
         FixtureDef fixtureDef = new FixtureDef();
         fixtureDef.shape = circle;
@@ -96,18 +96,40 @@ public class Robot extends Actor implements Disposable {
 
     /** Sets the motors to move forward.  */
     private void moveForward() {
+        leftMotor.setSpeed(1.0f);
+        rightMotor.setSpeed(1.0f);
+        leftMotor.direction = MotorDirection.FORWARD;
+        rightMotor.direction = MotorDirection.FORWARD;
+    }
+
+    /* Sets the motors to move forward and left. */
+    private void moveForwardLeft() {
+        leftMotor.setSpeed(0.85f);
+        rightMotor.setSpeed(1.0f);
+        leftMotor.direction = MotorDirection.FORWARD;
+        rightMotor.direction = MotorDirection.FORWARD;
+    }
+
+    /* Sets the motors to move forward and right. */
+    private void moveForwardRight() {
+        leftMotor.setSpeed(1.0f);
+        rightMotor.setSpeed(0.85f);
         leftMotor.direction = MotorDirection.FORWARD;
         rightMotor.direction = MotorDirection.FORWARD;
     }
 
     /** Sets the motors to turn left.  */
     private void turnLeft() {
+        leftMotor.setSpeed(0.25f);
+        rightMotor.setSpeed(0.25f);
         leftMotor.direction = MotorDirection.REVERSE;
         rightMotor.direction = MotorDirection.FORWARD;
     }
 
     /** Sets the motors to turn right. */
     private void turnRight() {
+        leftMotor.setSpeed(0.25f);
+        rightMotor.setSpeed(0.25f);
         leftMotor.direction = MotorDirection.FORWARD;
         rightMotor.direction = MotorDirection.REVERSE;
     }
@@ -120,48 +142,48 @@ public class Robot extends Actor implements Disposable {
 
     /** Simulate DC motors to move or rotate the robot. */
     private void simulateMotors() {
-        if (leftMotor.direction == MotorDirection.FORWARD && rightMotor.direction == MotorDirection.FORWARD) {
-            float angle = body.getAngle();
-            Vector2 forward = new Vector2(MathUtils.cos(angle), MathUtils.sin(angle)).scl(0.0005f);
-            body.applyLinearImpulse(forward, robotCenter, true);
+        Vector2 forwardDir = rayFront.end.cpy().sub(rayFront.start).nor();
+
+        if (leftMotor.direction != MotorDirection.NONE) {
+            float deg = leftMotor.direction == MotorDirection.FORWARD ? 0 : 180;
+            body.applyForce(MOTOR_FORCE.cpy().scl(forwardDir).rotateDeg(deg).scl(leftMotor.getSpeed()), rayLeft.start, true);
         }
 
-        if (leftMotor.direction == MotorDirection.REVERSE && rightMotor.direction == MotorDirection.FORWARD) {
-            body.applyTorque(0.0001f, true);
-        }
-
-        if (leftMotor.direction == MotorDirection.FORWARD && rightMotor.direction == MotorDirection.REVERSE) {
-            body.applyTorque(-0.0001f, true);
+        if (rightMotor.direction != MotorDirection.NONE) {
+            float deg = rightMotor.direction == MotorDirection.FORWARD ? 0 : 180;
+            body.applyForce(MOTOR_FORCE.cpy().scl(forwardDir).rotateDeg(deg).scl(rightMotor.getSpeed()), rayRight.start, true);
         }
     }
 
     /** Maze solving algorithm for the robot. */
-    private void solveMaze(float delta) {
-        if (delay > 0) {
-            delay -= delta;
-            return;
-        }
-
-        if (sensorFront) {
-            if (sensorRight) {
+    private void solveMaze() {
+        if (distanceFront < 0.2f) {
+            // front sensor detected wall in 20 cm
+            if (distanceRight < 0.2f) {
+                // right sensor also detected wall in 20 cm
                 turnLeft();
             } else {
+                // right sensor not detected any wall
                 turnRight();
             }
         } else {
-            if (!sensorRight) {
+            // front sensor not detected any wall
+            if (distanceRight > 0.15f) {
+                // right sensor also not detected any wall in 15 cm
                 turnRight();
             } else  {
-                if (distanceRight < 0.01f) {
-                    turnLeft();
-                } else if (distanceLeft < 0.01f) {
-                    turnRight();
+                // right sensor detected wall in 15 cm
+                if (distanceRight < 0.06f) {
+                    // right sensor detected wall in 6 cm
+                    moveForwardLeft();
+                } else if (distanceLeft < 0.06f) {
+                    // left sensor detected wall in 6 cm
+                    moveForwardRight();
                 } else  {
                     moveForward();
                 }
             }
         }
-
     }
 
     @Override
@@ -175,13 +197,13 @@ public class Robot extends Actor implements Disposable {
 
         robotCenter = body.getWorldCenter();
 
-        rayFront.start = robotCenter.cpy().add(bodyRadius * MathUtils.cos(forwardAngle), bodyRadius * MathUtils.sin(forwardAngle));
+        rayFront.start = robotCenter.cpy().add(BODY_RADIUS * MathUtils.cos(forwardAngle), BODY_RADIUS * MathUtils.sin(forwardAngle));
         rayFront.end = rayFront.start.cpy().add(MathUtils.cos(forwardAngle) * FRONT_RAY_LENGTH,MathUtils.sin(forwardAngle) * FRONT_RAY_LENGTH);
 
-        rayLeft.start = robotCenter.cpy().add(bodyRadius * MathUtils.cos(leftAngle), bodyRadius * MathUtils.sin(leftAngle));
+        rayLeft.start = robotCenter.cpy().add(BODY_RADIUS * MathUtils.cos(leftAngle), BODY_RADIUS * MathUtils.sin(leftAngle));
         rayLeft.end = rayLeft.start.cpy().add(MathUtils.cos(leftAngle) * SIDE_RAY_LENGTH, MathUtils.sin(leftAngle) * SIDE_RAY_LENGTH);
 
-        rayRight.start = robotCenter.cpy().add(bodyRadius * MathUtils.cos(rightAngle), bodyRadius * MathUtils.sin(rightAngle));
+        rayRight.start = robotCenter.cpy().add(BODY_RADIUS * MathUtils.cos(rightAngle), BODY_RADIUS * MathUtils.sin(rightAngle));
         rayRight.end = rayRight.start.cpy().add(MathUtils.cos(rightAngle) * SIDE_RAY_LENGTH, MathUtils.sin(rightAngle) * SIDE_RAY_LENGTH);
 
         sensorFront = false;
@@ -219,7 +241,7 @@ public class Robot extends Actor implements Disposable {
 
         simulateMotors();
 
-        solveMaze(delta);
+        solveMaze();
 
         if (Gdx.input.isKeyPressed(Input.Keys.W)) moveForward();
         if (Gdx.input.isKeyPressed(Input.Keys.A)) turnLeft();
