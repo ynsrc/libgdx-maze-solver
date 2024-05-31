@@ -2,13 +2,16 @@ package ynsrc.mazesolver;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.utils.ScreenUtils;
-import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.badlogic.gdx.utils.viewport.FillViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import js42721.maze.RecursiveBacktracker;
 import js42721.maze.TileMaze;
@@ -18,7 +21,7 @@ import js42721.maze.TileMaze;
  * You can visit <a href="https://github.com/ynsrc/libgdx-maze-solver">Github Repo</a>
  * @author YNSRC
  */
-public class MazeSolver extends Game {
+public class MazeSolver extends Game implements InputProcessor {
     /** Pixels per meter. 1 meter in Box2D shown in 300 pixels */
     public static final float PPM = 300f;
 
@@ -41,7 +44,7 @@ public class MazeSolver extends Game {
     Viewport viewport;
 
     /** This camera will follow robot in world. */
-    OrthographicCamera camera;
+    OrthographicCamera camera, uiCamera;
 
     /** Box2D's debug renderer shows fixtures of bodies in world. */
     Box2DDebugRenderer debugRenderer;
@@ -94,12 +97,16 @@ public class MazeSolver extends Game {
         shapeRenderer = new ShapeRenderer();
 
         camera = new OrthographicCamera(SCREEN_WIDTH, SCREEN_HEIGHT);
-        viewport = new ExtendViewport(WORLD_WIDTH, WORLD_HEIGHT, camera);
+        viewport = new FillViewport(WORLD_WIDTH, WORLD_HEIGHT, camera);
+
+        uiCamera = new OrthographicCamera(SCREEN_WIDTH, SCREEN_HEIGHT);
 
         spriteBatch = new SpriteBatch();
 
         Vector2 startPos = generateMaze();
         robot = new Robot(this, startPos);
+
+        Gdx.input.setInputProcessor(this);
     }
 
     @Override
@@ -111,9 +118,16 @@ public class MazeSolver extends Game {
         robot.act(Gdx.graphics.getDeltaTime());
 
         camera.position.set(robot.body.getPosition(), 0);
-        camera.update();
 
-        viewport.apply();
+        if (Gdx.input.isButtonPressed(Input.Buttons.FORWARD)) {
+            camera.zoom += 0.05f;
+        }
+
+        if (Gdx.input.isButtonPressed(Input.Buttons.BACK)) {
+            camera.zoom -= 0.05f;
+        }
+
+        camera.update();
 
         debugRenderer.render(world, camera.combined);
 
@@ -137,5 +151,54 @@ public class MazeSolver extends Game {
         shapeRenderer.dispose();
         spriteBatch.dispose();
         robot.dispose();
+    }
+
+    @Override
+    public boolean keyDown(int keycode) {
+        return false;
+    }
+
+    @Override
+    public boolean keyUp(int keycode) {
+        return false;
+    }
+
+    @Override
+    public boolean keyTyped(char character) {
+        return false;
+    }
+
+    @Override
+    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
+    @Override
+    public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
+    @Override
+    public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
+    @Override
+    public boolean touchDragged(int screenX, int screenY, int pointer) {
+        return false;
+    }
+
+    @Override
+    public boolean mouseMoved(int screenX, int screenY) {
+        return false;
+    }
+
+    @Override
+    public boolean scrolled(float amountX, float amountY) {
+        if (amountY != 0) {
+            camera.zoom = MathUtils.clamp(camera.zoom + ((amountY > 0) ? 0.1f : -0.1f), 1.0f, 5.0f);
+            return true;
+        }
+        return false;
     }
 }
