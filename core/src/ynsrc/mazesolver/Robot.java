@@ -1,5 +1,6 @@
 package ynsrc.mazesolver;
 
+import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
@@ -256,8 +257,8 @@ public class Robot extends Actor implements Disposable {
         return raw[0] + "." + raw[1].substring(0, Math.min(raw[1].length(), 2));
     }
 
-    @Override
-    public void draw(Batch batch, float parentAlpha) {
+    /** Draw robot sensor distance texts (Java version). */
+    private void drawDistanceTexts(Batch batch) {
         float xRatio = Gdx.graphics.getWidth() / MazeSolver.SCREEN_WIDTH;
         float yRatio =  Gdx.graphics.getHeight() / MazeSolver.SCREEN_HEIGHT;
 
@@ -289,6 +290,64 @@ public class Robot extends Actor implements Disposable {
                     screenCoordinates.x / xRatio,
                     screenCoordinates.y / yRatio
             );
+        }
+    }
+
+    /** Draw robot sensor distance texts on screen (HTML/GWT version). */
+    private void drawDistanceTextsGwt(Batch batch) {
+        Vector2 screenCenter = new Vector2(Gdx.graphics.getWidth() / 2f, Gdx.graphics.getHeight() / 2f);
+        Vector2 scale = new Vector2(MazeSolver.SCREEN_WIDTH / Gdx.graphics.getWidth(), MazeSolver.SCREEN_HEIGHT / Gdx.graphics.getHeight());
+        float forwardAngle = body.getAngle();
+        float leftAngle = forwardAngle + MathUtils.PI / 3;
+        float rightAngle = forwardAngle - MathUtils.PI / 3;
+        float rayLength = 1.5f * FRONT_RAY_LENGTH * MazeSolver.PPM;
+
+        if (sensorFront) {
+            Vector2 textPos = screenCenter.cpy()
+                    .add(MathUtils.cos(forwardAngle) * rayLength, MathUtils.sin(forwardAngle) * rayLength)
+                    .scl(scale);
+
+            font.draw(
+                    batch,
+                    floatFormat(distanceFront * 100f) + " cm",
+                    textPos.x,
+                    textPos.y
+            );
+        }
+
+        if (sensorLeft) {
+            Vector2 textPos = screenCenter.cpy()
+                    .add(MathUtils.cos(leftAngle) * rayLength, MathUtils.sin(leftAngle) * rayLength)
+                    .scl(scale);
+
+            font.draw(
+                    batch,
+                    floatFormat(distanceLeft * 100f) + " cm",
+                    textPos.x,
+                    textPos.y
+            );
+        }
+
+        if (sensorRight) {
+            Vector2 textPos = screenCenter.cpy()
+                    .add(MathUtils.cos(rightAngle) * rayLength, MathUtils.sin(rightAngle) * rayLength)
+                    .scl(scale);
+
+            font.draw(
+                    batch,
+                    floatFormat(distanceRight * 100f) + " cm",
+                    textPos.x,
+                    textPos.y
+            );
+        }
+    }
+
+    @Override
+    public void draw(Batch batch, float parentAlpha) {
+        if (Gdx.app.getType() == Application.ApplicationType.WebGL) {
+            drawDistanceTextsGwt(batch);
+        } else {
+            drawDistanceTexts(batch);
         }
     }
 
